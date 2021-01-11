@@ -1,7 +1,7 @@
 # jira-version-report-changes-table
 Show changes in a Version in a table
 
-Create readable table with scope changes of a JIRA Version/Release/Fix Version
+Create readable table with scope changes of a JIRA Version/Release/Fix Version  
 The existing graph is nice, but hard to read the details
 
 Known bug: you have to refresh the page after first load and after selecting another version in the dropdown
@@ -17,4 +17,4 @@ Known bug: you have to refresh the page after first load and after selecting ano
  - Options: enable JavaScript and JQuery 3
  - Copypaste this whole script in the JS-pane. Keep CSS pane empty
 6. Save
-7. Go to JIRA Version report and refresh. The table shold appear above the graph
+7. Go to JIRA Version report and refresh. The table should appear above the graph
