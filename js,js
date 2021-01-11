@@ -1,0 +1,329 @@
+//
+// Create readable table with scope changes of a JIRA Version/Release/Fix Version
+// The existing graph is nice, but hard to read the details
+//
+// Known bug: you have to refresh the page after first load and after selecting another version in the dropdown
+//
+// INSTALL
+// 1. Install 'User JavaScript and CSS' extension for Chrome https://chrome.google.com/webstore/detail/user-javascript-and-css/nbhcbdghjpllgmfilhnhkllmkecfmpld?hl=en
+// 2. Open a random JIRA Version report in your browser. The url probably contains "chart=versionReport" now.
+// 3. Click 'User JavaScript and CSS' icon in Chrome (Blue/red dotted lines-icon)
+// 4. Click 'Add new'
+// 5. fill in:
+// Name: Version report
+// URL: replace url by 'https://jira.*/*chart=versionReport*'
+// Options: enable JavaScript and JQuery 3
+// Copypaste this whole script in the JS-pane. Keep CSS pane empty
+// 6. Save
+// 7. Go to JIRA Version report and refresh. The table shold appear above the graph
+
+// get parameters from url
+let searchParams = new URLSearchParams(window.location.search)
+let versionId = searchParams.get('version')
+let rapidViewId = searchParams.get('rapidView')
+
+// Get numerical part of issuekey
+// Splits issuekey at dash (-). So ABC-123 becomes ABC and Id 123 and returns Id 
+function GetIdOfIssueKey(issuekey) {
+	aIssueKeyParts = issuekey.split("-");
+	return aIssueKeyParts[1];
+}
+
+$.getJSON( "../rest/greenhopper/1.0/rapid/charts/versionreport?rapidViewId=" + rapidViewId + "&versionId=" + versionId, function( data ) {
+	
+	// First gather some general data of all stories in selected Version
+	var storyData = [];
+	
+	// get all information (title, SPs) of all incompleted issues
+	var incompleteEstimatedIssues = data.contents.incompleteEstimatedIssues;
+	$.each( incompleteEstimatedIssues, function( key, value ) {
+		keyId = GetIdOfIssueKey(value.key); 
+		storyData[keyId] = value.summary;
+	});
+	
+	// get all information (title, SPs) of all completed issues
+	var completedIssues = data.contents.completedIssues;
+	//console.log(data.contents.completedIssues);
+	$.each( completedIssues, function( key, value ) {
+	keyId = GetIdOfIssueKey(value.key); 
+		storyData[keyId] = value.summary;
+	});
+
+	// get all information (title, SPs) of all incompleteUnestimatedIssues issues
+	var incompleteUnestimatedIssues = data.contents.incompleteUnestimatedIssues;
+	$.each( incompleteUnestimatedIssues, function( key, value ) {
+	keyId = GetIdOfIssueKey(value.key); 
+		storyData[keyId] = value.summary;
+	});
+	
+	// Then: get change-entries of Version
+	GetChanges(storyData);
+});
+
+
+// 16303
+
+// does not work yet:  table needs up update if otheh Version is selected
+$( "#ghx-dropdown-trigger, #ghx-chart-picker, #ghx-chart-picker-form, .ghx-controls" ).change(function() {
+	console.log('change');
+	alert('change');
+	GetChanges(storyData);
+});
+
+
+
+function GetChanges (storyData) {
+		
+		// get changes of Version
+		$.getJSON( "../rest/greenhopper/1.0/rapid/charts/versionprogresschart?rapidViewId=" + rapidViewId + "&versionId=" + versionId, function( data ) {
+			// get changes
+			changes = data.changes;
+			var lastDate, lastStoryKey, lastStoryTitle;
+			var aaDateStory = {};
+			var aLastKnownSp = {};
+			var rows = "";
+			var sub = '';
+			var rowClass = '';
+			var	filterLink = '';
+				
+			// loop all changes
+			$.each( changes, function( key, value ) {
+				filterLink = '';
+				var changeEntry = value[0]; // make human readable
+				keyId = parseInt(changeEntry.key.substr(4, 20));
+			  
+				var tskey = parseInt(key);
+				var ts = new Date(tskey);
+				//console.log(ts);
+				var y = ts.getFullYear();
+				
+				var m =  ts.getMonth();
+			    m += 1;  // JavaScript months are 0-11
+			    if (m < 10) {
+			        m = "0" + m;
+			    }
+			    
+			    var d = ts.getDate();
+				if (d < 10) {
+			        d = "0" + d;
+			    }
+			    
+			    var h = ts.getHours();
+			    if (h < 10) {
+			        h = "0" + h;
+			    }
+			    
+			    var min = ts.getMinutes(); 
+			    if (min < 10) {
+			        min = "0" + min;
+			    }
+				
+				date = y + "-"+ m + "-"+ d;
+				time = h + ":"+ min ; // + ":"+ ts.getSeconds()
+	
+				var content = 0; // tracks if there is valuable content in this changeEntry
+				var addedOrRemoved = '';
+				if (changeEntry.added === true) {
+					addedOrRemoved = 'added'; // added to this version
+					content++;
+				} else if (changeEntry.added === false)  {
+					addedOrRemoved = 'removed '; //removed from this version
+					content++;
+				} else {
+					addedOrRemoved = ''; // like: a changed story that was not added of removed
+				}
+				
+				var spChange = '';
+				var diff = '';
+				var storyKey = changeEntry.key;
+				
+				// a change with statc filled has a changed amount of SP
+				if (changeEntry.statC && Object.keys(changeEntry.statC).length > 0) {
+					var old;
+					var iDiff;
+					
+					var newSP;
+					var sign = "";
+					if (changeEntry.statC.newValue) {
+						newSP = changeEntry.statC.newValue;
+						aLastKnownSp[storyKey] = newSP;
+						diff = "(+" + newSP + ")";
+					} else {
+						// items witout a statC.newValue can be skipped
+						return true;
+					}
+					
+					//console.log(value[0].statC);
+					// 
+					if (changeEntry.statC.oldValue) {
+						old = changeEntry.statC.oldValue;
+						iDiff = changeEntry.statC.newValue - changeEntry.statC.oldValue;
+						if (iDiff > 0 ) {
+							sign = '+';
+						} 
+						diff = "(" + sign + iDiff + ")";
+						
+					} else {
+						old = "-";
+					}
+					
+
+					spChange = '<span class="vrp-oldSP">' + old + '</span>&nbsp;<span class="vrp-SPdivider">-></span>&nbsp;<span class="vrp-newSP">' + newSP + '</span>';
+					content++;
+				} else  {
+					if (aLastKnownSp[storyKey]) {
+						spChange = '<span class="vrp-oldSP">' + aLastKnownSp[storyKey] + '</span>';
+					} else {
+						spChange = '&nbsp;';
+					}
+				}
+				
+				// skip if not usefull content, like ????
+				if (content == 0) return true;
+
+				storyTitle = storyData[keyId];
+				
+				var storyKeyDisp, storyTitleDisp, dateDisp;
+				
+			
+				
+				// hide showing date if its the same date as previous change
+				if (lastDate == date) {
+					dateDisp = '<span class="vrp-hideData">' + date + '</span>';
+				} else {
+					dateDisp = date;
+				}
+				// hide showing storyKey if its the same story as previous change
+				if (lastStoryKey == storyKey) {
+					storyKeyDisp = '<span class="vrp-hideData">' + storyKey + '</span>';
+					
+				} else {
+					storyKeyDisp = '<a href="/jira/browse/' + changeEntry.key + '">' + storyKey + '</a>';
+					filterLink =  ' <span class="vrp-populateSearch" data-keyid="' + changeEntry.key + '">+</span>';
+				}
+				
+				sub = false;
+				rowClass = '';
+				if (lastStoryKey == storyKey && lastDate == date) {
+					sub = true;
+					rowClass = 'class="vrp-subentry"'
+					//time = '';
+				}
+				
+
+				/*// if removed
+				if (changeEntry.added === false) {
+					storyTitleDisp = '<span class="vrp-nadata">n/a</span>'
+				// hide showing storyTitle if its the same title as previous change
+				} else */
+				if (lastStoryTitle == storyTitle) {
+					storyTitleDisp = '-';
+				
+				// n/a if title is unavilable (like when removed later from Versio)
+				} else if (!storyTitle) {
+					storyTitleDisp = '<span class="vrp-nadata">n/a (prob removed later)</span>';
+				}	else {
+					storyTitleDisp = storyTitle;
+					
+				}
+				
+				// build table
+				rows += '<tr ' + rowClass + '><td>'  + dateDisp + '</td><td>'  + time + '</td><td>' + addedOrRemoved + '</td><td>' + spChange + '<span class="vrp-SPdiff">' + diff +  '</span></td><td>' + storyKeyDisp + filterLink + '</td><td>' +  storyTitleDisp + '</td>'  /*+ '<td>'+ JSON.stringify(value[0].statC)+'</td>'*/+'</tr>';
+					 
+				
+				// try to combine changes of same story with same minute (like: an add + a SP change)
+			//	console.log();
+				if (keyId < 10000){
+					sKeyId = "0"+ keyId;
+				} else {
+					sKeyId = keyId;
+				}
+				var sArrayKey = y+""+m+""+d+""+sKeyId; // y+""+m+""+d+""+h+""+min+""+keyId;
+				var arrayKey = sArrayKey.toString();
+			
+				// Story all data in one big array to be processed later for merging/combining data
+				if (!aaDateStory[arrayKey]) aaDateStory[arrayKey] = {};
+				if (!aaDateStory[arrayKey].combined) aaDateStory[arrayKey].combined = 0;
+				aaDateStory[arrayKey].date = date;
+				aaDateStory[arrayKey].time = time;
+				aaDateStory[arrayKey].storyKey = storyKey;
+				aaDateStory[arrayKey].title = storyTitle;
+				aaDateStory[arrayKey].combined++; // count how much events are combined to one
+				
+				if (changeEntry.added) aaDateStory[arrayKey].addedOrRemoved = addedOrRemoved;
+				
+				if (value[0].statC) {
+					if (changeEntry.statC.newValue) {
+						aaDateStory[arrayKey].newValue = changeEntry.statC.newValue;
+						// if newValue but no oldValue: oldValue is 0
+						if (!changeEntry.statC.oldValue) {
+							changeEntry.statC.oldValue = "0";
+							aaDateStory[arrayKey].oldValue = "0";
+						}
+					}
+					
+					// keep first oldValue: dont overwrite with new oldValue: 2->5 + 5->3 should be 2-> 4
+					if (changeEntry.statC.oldValue && aaDateStory[arrayKey].oldValue != "") {
+						aaDateStory[arrayKey].oldValue = changeEntry.statC.oldValue;
+					}
+				}
+				
+				
+				lastStoryKey = storyKey;
+				if (storyTitle) {
+					lastStoryTitle = storyTitle;
+				} else {
+					lastStoryTitle = Math.random();
+				}
+				lastDate = date;
+
+				// <td>' + JSON.stringify(value[0].statC) +  '</td>
+			});
+			/*console.log(aaDateStory);
+			rows += '<tr><th colspan="5">----</th></tr>';
+			
+
+			$.each( aaDateStory, function( key, value ) {
+				
+			
+				if (!value) return true;
+				
+				if (value.oldValue) {
+					oldValueDisp = value.oldValue; 
+				} else {
+					oldValueDisp = "";
+				}
+				if (value.newValue) {
+					newValueDisp = value.newValue; 
+				} else {
+					newValueDisp = "";
+				}
+				if (value.addedOrRemoved) {
+					addedOrRemovedDisp = value.addedOrRemoved; 
+				} else {
+					addedOrRemovedDisp = "";
+				}
+				rows += '<tr><td title="'  + key + '">'  + value.date + '</td><td>'  + value.time + '</td><td>' + addedOrRemovedDisp + '</td><td>' + oldValueDisp +  '</td><td>' + newValueDisp +  '</td><td><a href="/jira/browse/' +  value.storyKey + '">' +  value.storyKey + '</a></td><td>' + value.title +  '</td><td>'  + value.combined + 'x</td></tr>';
+			});*/
+			
+			var headerrow = '<tr><th>Date</th><th>Time</th><th>Add/Remove</th><th >SP change</th><th>Key</th><th>Summary</th></tr>';
+			$("#ghx-report-content").prepend('<input class="text vrp-search" type="text" placeholder="Search.."><table class="aui vrp-table">' + headerrow + rows + '</table>');
+	
+			// Add Search/filter
+			  $(".vrp-search").on("keyup", function() {
+			    //$(".vrp-search").width("600px");
+			    var value = $(this).val().toLowerCase();
+			    $(".vrp-table tr").filter(function() {
+			      $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
+			    });
+			  });
+			  
+			  // Insert Issuekey in Search/filter
+			  $(".vrp-populateSearch").on("click", function() {
+				keyid = $(this).data('keyid');
+				$(".vrp-search").val(keyid).focus().click().keyup();
+
+			  });
+  
+		});
+}
