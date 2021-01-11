@@ -1,0 +1,64 @@
+
+.vrp-table td:nth-child(1) {
+	width: 90px;
+}
+.vrp-table td:nth-child(2) {
+	width: 40px;
+}
+.vrp-table td:nth-child(3) {
+	width: 60px;
+}
+/* SPs */
+.vrp-table td:nth-child(4) {
+	width: 130px;
+}
+.vrp-table td:nth-child(5) {
+	width: 100px;
+}
+.vrp-table td:nth-child(6) {
+	width: auto;
+}
+.vrp-hideData {
+	color: #fff;
+}
+.vrp-nadata {
+	color: #BBB;
+}
+.vrp-oldSP, .vrp-newSP, .vrp-SPdivider, .vrp-SPdiff {
+	display: inline-block;
+	width: 20px;
+	text-align: center;
+}
+.vrp-SPdivider {
+	text-align: center;
+}
+.vrp-SPdiff {
+	width: 40px;
+}
+.vrp-subentry td:nth-child(2),
+.vrp-subentry td:nth-child(6){
+	color: #BBB;
+}
+.vrp-search {
+	border-color: rgb(223, 225, 230);
+	border-style: solid;
+	-webkit-border-radius: 3px 3px 3px 3px;
+    border-radius: 3px 3px 3px 3px;
+    -moz-box-sizing: border-box;
+    -webkit-box-sizing: border-box;
+    box-sizing: border-box;
+    font-size: 14px;
+    line-height: 1;
+    height: 30px;
+    max-width: none;
+    padding: 5px 24px 5px 5px;
+    -moz-transition: width 100ms ease-in-out;
+    -ms-transition: width 100ms ease-in-out;
+    -webkit-transition: width 100ms ease-in-out;
+    transition: width 100ms ease-in-out;
+    width: 152px;
+    background-color: #fafbfc;
+    color: #172b4d;
+    margin: 0;
+    vertical-align: baseline;
+}
