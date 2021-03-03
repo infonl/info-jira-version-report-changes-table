@@ -16,8 +16,9 @@ Known bug: you have to refresh the page after first load and after selecting ano
 4. Click 'Add new'
 5. fill in:
  - Name: Version report
- - URL: replace url by 'https://jira.*/*chart=versionReport*'
+ - URL: replace url by`https://jira.*/*chart=versionReport*`
  - Options: enable JavaScript and JQuery 3
- - Copypaste this whole script in the JS-pane. Keep CSS pane empty
+ - Open https://github.com/infonl/jira-version-report-changes-table/blob/main/css.css And copy-paste content in the CSS pane. 
+ - Open https://raw.githubusercontent.com/infonl/jira-version-report-changes-table/main/js%2Cjs And copy-paste content in the JS pane. 
 6. Save
 7. Go to JIRA Version report and refresh. The table should appear above the graph
